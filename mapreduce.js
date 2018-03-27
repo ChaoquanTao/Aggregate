@@ -5,7 +5,7 @@ MongoClient.connect(url, function(err, db) {
   if (err) throw err;
  
   var dbo = db.db("busi_run");
-  const col = dbo.collection("alldistinct");
+  const col = dbo.collection("allbusi");
   console.log("数据库已创建!");
 
   // col.find({}).toArray(function(error,result){
@@ -30,7 +30,7 @@ function finalize(key,reduceValue){
 	print("line 29: "+reduceValue);
 	//print(typeof(reduceValue))
 	var corePnts = [];
-	var clusters = new Array(200);
+	var clusters = new Array(2000);
 	for(var i=0; i<clusters.length;i++){
 		clusters[i] = new Array();
 	}
@@ -48,7 +48,7 @@ function finalize(key,reduceValue){
 		// }
 	print("values: "+values)
 	print("values.length "+values.length)
-	var eps = 1000	;
+	var eps = 100	;
 	var minPts = 3 ;
 	var c =-1;
 	
@@ -92,7 +92,7 @@ function finalize(key,reduceValue){
 				}
 				
 				for(var pnt=0; pnt< clusters[c].length; pnt++){ //pnt是下标
-					print("pnt "+pnt+" isVisited "+isVisited[values.indexOf(clusters[c][pnt])]+values.indexOf(clusters[c][pnt]))
+					print("pnt "+pnt+" isVisited "+isVisited[values.indexOf(clusters[c][pnt])]+" "+values.indexOf(clusters[c][pnt]))
 					if(isVisited[values.indexOf(clusters[c][pnt])]==false){ //在未读里面寻找
 						var tneighbors = getNeighbors(clusters[c][pnt]);
 						isVisited[values.indexOf(clusters[c][pnt])]=true ; //将点标为已读
@@ -124,8 +124,10 @@ function finalize(key,reduceValue){
 				// print("p "+p);
 				// print("lat1: "+values[p].lat+" lng1: "+values[p].lng+" lat2: "+value.lat+" lng2: "+value.lng);
 				var d = dist(values[p],value);
-				// print("distance: "+d);
+				//print("distance: "+d);
 				if(d <= eps){
+					print("distance: "+d);
+					print(value.lng,value.lat,value.cph,value.day,value.timeID,values[p].lng,values[p].lat,values[p].cph,values[p].day,values[p].timeID)
 					neighbors.push(values[p]);
 				}
 			}
@@ -150,15 +152,93 @@ function map(){
 	var date = new Date(da.substr(0, 4), new Number(da.substr(5, 2) - 1), da.substr(8, 2), da.substr(11, 2), da.substr(14, 2), da.substr(17, 2));
 	var day = date.getDay();
 	var time = date.getHours();
-	var timeID = Math.floor(time/2);
+	//var timeID = Math.floor(time/3);
 	function isWorkDay(){
 		return day>=1 && day<=5 ? true : false ;
 		// return false;
 	}
 
-	var x = {"isWorkDay":isWorkDay(),"timeID": timeID };
+	//根据工作日和非工作日划分不同的timeID
+	if(isWorkDay()){//如果是工作日
+		switch(time){
+			case 0:
+			case 1:
+			case 2:
+			case 3:
+			case 4:
+			case 5:
+			case 6:
+			case 7: 
+				timeID = 0;
+				break ; 
+			case 8:
+			case 9:
+			case 10: 
+				timeID =1;
+				break ;
+			case 11:
+			case 12:
+			case 13: 
+				timeID=2;
+				break ;
+			case 14:
+			case 15:
+			case 16: 
+				timeID =3 ;
+				break ;
+			case 17:
+			case 18:
+			case 19: 
+			case 20: 
+				timeID=4;
+				break ;
+			case 21:
+			case 22:
+			case 23: 
+				timeID = 5;
+				break;
+
+		}
+	}
+	else{ 	//如果不是工作日
+		switch(time){
+			case 0:
+			case 1:
+			case 2:
+			case 3:
+			case 4:
+			case 5:
+			case 6:
+			case 7:
+			case 8: 
+				timeID=0;
+				break;
+			case 9:
+			case 10:
+			case 11:
+			case 12:
+			case 13:
+			case 14:
+			case 15:
+			case 16:
+			case 17:
+			case 18:
+			case 19:
+			case 20:
+			case 21:
+			case 22:
+			case 23: 
+				timeID=2;
+				break ;
+		}
+	}
+
+
+	 var x = {"isWorkDay":isWorkDay(),"timeID": timeID };
+	//var x = {"isWorkDay":isWorkDay()};
 	var y = {"lng":this["SCJD"],"lat":this["SCWD"],"day":day,"timeID":timeID,"cph":this["CPHM"]};
  
+
 
 	emit(x, y);
 	// emit({"isWorkDay":isWorkDay(),"timeID": timeID}, 1);
@@ -169,10 +249,15 @@ function map(){
 function reduce(key,values){
 	
 	// return {values: values}
-	if (values[0].hasOwnProperty("values")) {
-		return { values: values[0]['values'].concat(values.slice(1)) }
-	} 
-	return { values: values };
+	temp = { "values": [] }
+	for (var i = 0; i < values.length; ++i) {
+		if (values[i].hasOwnProperty("values")) {
+			temp["values"] = temp["values"].concat(values[i]['values']) 
+		} else {
+			temp["values"] = temp["values"].concat(values[i])
+		}
+	}
+	return temp;
 	
 }
 
