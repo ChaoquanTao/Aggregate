@@ -1,11 +1,14 @@
 var MongoClient = require('mongodb').MongoClient;
-var url = "mongodb://localhost:27017/";
+var url = "mongodb://127.0.0.1:27017/";
  
-MongoClient.connect(url, function(err, db) {
+const options = { keepAlive: true, connectTimeoutMS: 8000000 ,socketTimeoutMS: 8000000}
+
+
+MongoClient.connect(url,options, function(err, db) {
   if (err) throw err;
  
   var dbo = db.db("busi_run");
-  const col = dbo.collection("allbusi");
+  const col = dbo.collection("output");
   console.log("数据库已创建!");
 
   // col.find({}).toArray(function(error,result){
@@ -35,21 +38,21 @@ function finalize(key,reduceValue){
 		clusters[i] = new Array();
 	}
 	if(reduceValue.values==undefined){
-		print("this is a bson oject!")
+		// print("this is a bson oject!")
 		return corePnts;
 	}
 	
 	var values =  reduceValue.values;
-	print("isWorkDay: "+key.isWorkDay+" timeID: "+values[0].timeID)
+	// print("isWorkDay: "+key.isWorkDay+" timeID: "+values[0].timeID)
 		// for(var p in values[0]){
 		// 	if(values[0].hasOwnProperty(p)){
 		// 		print("=================="+p)
 		// 	}
 		// }
-	print("values: "+values)
-	print("values.length "+values.length)
-	var eps = 100	;
-	var minPts = 3 ;
+	// print("values: "+values)
+	// print("values.length "+values.length)
+	var eps = 500	;
+	var minPts = 5 ;
 	var c =-1;
 	
 	var isVisited = new Array(values.length);
@@ -66,56 +69,59 @@ function finalize(key,reduceValue){
 		
 		//print("test1"+isVisited[idx])
 		if(isVisited[idx]==false){	//如果当前点还没有被访问
-			print("idx: "+idx+" value: "+values[idx].lng+" "+values[idx].lat+" "+values[idx].cph);
+			// print("idx: "+idx+" value: "+values[idx].lng+" "+values[idx].lat+" "+values[idx].cph);
 			//print(values[idx].lng,values[idx].lat)
 			
 			var neighbors = getNeighbors(values[idx]); //获取某点的邻居
 
-			print("neighors: "+neighbors)
-			print("neibour.length: "+neighbors.length)
+			// print("neighors: "+neighbors)
+			// print("neibour.length: "+neighbors.length)
 			if(neighbors.length>=minPts){	//如果是核心点
 				c++;
 				isVisited[idx] = true ;  //这个核心点标记已经被访问过
 
-				print("this is a corepoint idx: "+idx+" value: "+values[idx].lng+" "+values[idx].lat+" "+values[idx].cph);
+				// print("this is a corepoint idx: "+idx+" value: "+values[idx].lng+" "+values[idx].lat+" "+values[idx].cph);
 				corePnts.push(values[idx]);
 				clusters[c].push(values[idx]);	//将该点加入簇
 			
-				// clusters[c].concat(neighbors);
+				
 				for(var nb in neighbors){	//将该点的邻居加入簇 nb是下标
 					// clusters[c].push(nb);
-					print("nb "+nb+"idx"+values.indexOf(neighbors[nb]))
+					// print("nb "+nb+"idx"+values.indexOf(neighbors[nb]))
 					if(isVisited[values.indexOf(neighbors[nb])]==false){ //如果这个邻居还没有被访问
 						clusters[c].push(neighbors[nb]);
 						//isVisited[values.indexOf(nb)]=true ;	//同时将该点置为已访问过
+						corePnts.push(neighbors[nb]);
 					}
 				}
 				
 				for(var pnt=0; pnt< clusters[c].length; pnt++){ //pnt是下标
-					print("pnt "+pnt+" isVisited "+isVisited[values.indexOf(clusters[c][pnt])]+" "+values.indexOf(clusters[c][pnt]))
+					// print("pnt "+pnt+" isVisited "+isVisited[values.indexOf(clusters[c][pnt])]+" "+values.indexOf(clusters[c][pnt]))
 					if(isVisited[values.indexOf(clusters[c][pnt])]==false){ //在未读里面寻找
 						var tneighbors = getNeighbors(clusters[c][pnt]);
 						isVisited[values.indexOf(clusters[c][pnt])]=true ; //将点标为已读
 						if(tneighbors.length>=minPts){	//如果是核心点
-							print("this is a corepnt "+"idx"+ values.indexOf(clusters[c][pnt])+" value: "+clusters[c][pnt].lng+" "+clusters[c][pnt].lat+" "+clusters[c][pnt].cph);
+							// print("this is a corepnt "+"idx"+ values.indexOf(clusters[c][pnt])+" value: "+clusters[c][pnt].lng+" "+clusters[c][pnt].lat+" "+clusters[c][pnt].cph);
 							corePnts.push(clusters[c][pnt]);
 							// clusters[c].push(tneighbors);
 							for(var tnb in tneighbors){	//将邻居加入当前簇
 								if(isVisited[values.indexOf(tneighbors[tnb])]==false){
 									clusters[c].push(tneighbors[tnb]);	//邻居加入当前簇应该采用集合并的方法
+									corePnts.push(tneighbors[tnb]);
 								}
 							}
 							
 						}
 					}
 				}
-				print("ddd"+clusters[c]);
-				print("corepnts: "+corePnts)
+				// print("ddd"+clusters[c]);
+				// print("corepnts: "+corePnts)
 			}
 		}
 	}
-	return corePnts;
-	//return reduceValue;
+	print(c);
+	//return corePnts;
+	return clusters;
 
 	function getNeighbors(value){
 		var neighbors = [];
@@ -126,8 +132,8 @@ function finalize(key,reduceValue){
 				var d = dist(values[p],value);
 				//print("distance: "+d);
 				if(d <= eps){
-					print("distance: "+d);
-					print(value.lng,value.lat,value.cph,value.day,value.timeID,values[p].lng,values[p].lat,values[p].cph,values[p].day,values[p].timeID)
+					// print("distance: "+d);
+					// print(value.lng,value.lat,value.cph,value.day,value.timeID,values[p].lng,values[p].lat,values[p].cph,values[p].day,values[p].timeID)
 					neighbors.push(values[p]);
 				}
 			}
@@ -145,7 +151,8 @@ function finalize(key,reduceValue){
 function map(){
 	//对上车时间进行拆分，得到date和time
 	var da = this["SCSJ"];
-
+	//var da = this.SCSJ ;
+	//var da = "2017-12-12 12:12:12";
 	// 2017-12-12 12:12:12
 	// 0123456789012345678
 
@@ -228,7 +235,7 @@ function map(){
 			case 21:
 			case 22:
 			case 23: 
-				timeID=2;
+				timeID=1;
 				break ;
 		}
 	}

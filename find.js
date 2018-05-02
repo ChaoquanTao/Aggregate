@@ -4,9 +4,9 @@ db.out.find().forEach(function(car){
 	for(var i in car.value){
 		print("cph: "+car.value[i].cph+" lat: "+car.value[i].lat+" lng: "+car.value[i].lng+" timeID: "+car.value[i].timeID+" day "+car.value[i].day)
 	}
-	// for(var p in car._id){
-	// 	if(car._id.hasOwnProperty(p))
-	// 		print(p)
-	// }
+//	 for(var p in car._id){
+//	 	if(car._id.hasOwnProperty(p))
+//	 		print(p)
+//	 }
 
 })
